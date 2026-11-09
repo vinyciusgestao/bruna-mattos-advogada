@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /bruna-mattos-advogada/obrigado.html
+
+Sitemap: https://vinyciusgestao.github.io/bruna-mattos-advogada/sitemap.xml
