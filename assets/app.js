@@ -132,22 +132,10 @@ if (retrato && cena && mouse && !reduzido) {
   cena.style.transition = 'none';
 }
 
-/* ================================================================ passos + balança 3D */
+/* ================================================================ passos + medalha 3D */
 const lista = $('[data-passos]');
 const passos = lista ? $$('[data-passo]', lista) : [];
-const balanca = $('#balanca');
-let ctrl = null, ativo = 0, pausamos = false, deFrente = false, espera = 0;
-
-function balancaNoPasso(n) {
-  if (!ctrl) return;
-  clearTimeout(espera);
-  const frente = n === 3;
-  if (frente === deFrente) return;
-  deFrente = frente;
-  ctrl.setView(frente ? 'side' : 'three-quarter');
-  if (frente) espera = setTimeout(() => { ctrl.pause(); pausamos = true; }, reduzido ? 0 : 700);
-  else if (pausamos) { ctrl.resume(); pausamos = false; }
-}
+let ativo = 0;
 function ativa(n) {
   if (n === ativo) return;
   ativo = n;
@@ -156,7 +144,7 @@ function ativa(n) {
   lista.style.setProperty('--p', passos.length > 1 ? (n - 1) / (passos.length - 1) : 1);
   const num = $('.passo__n', passos[n - 1]);
   if (num && !reduzido) num.animate([{ transform: 'perspective(200px) rotateY(-180deg) scale(.85)' }, { transform: 'none' }], { duration: 560, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
-  balancaNoPasso(n);
+  medalha?.noPasso(n);
 }
 if (lista) {
   const io = new IntersectionObserver(() => {
@@ -173,33 +161,58 @@ if (lista) {
   if (mouse) passos.forEach((li, i) => li.addEventListener('pointerenter', () => ativa(i + 1)));
 }
 
-async function montaBalanca() {
-  if (!balanca) return;
-  const c = navigator.connection || {};
-  const lento = c.saveData || /(^|-)(2g|3g)$/.test(c.effectiveType || '');
-  const celular = matchMedia('(max-width: 700px), (pointer: coarse)').matches;
-  if (lento || celular) {
-    // no celular e em conexão lenta: a imagem da balança, boiando devagar (CSS), sem baixar o código 3D
-    const img = new Image();
-    img.className = 'balanca-still'; img.alt = balanca.getAttribute('aria-label'); img.decoding = 'async'; img.loading = 'lazy';
-    img.src = 'assets/objects/product-render/specs/stills/balanca-three-quarter-navy-half.webp';
-    balanca.removeAttribute('data-product'); balanca.removeAttribute('aria-label'); balanca.appendChild(img);
-    return;
+/* ================================================================ medalha 3D com a logo */
+// Um disco com espessura de metal: gira devagar e flutua; no passo 3 assenta de frente com um leve balanço;
+// um toque vira para o verso (OAB). O reflexo de luz e a sombra acompanham o giro. Tudo com mola, interrompível.
+const medalha = (() => {
+  const botao = $('[data-medalha]'), corpo = $('[data-corpo]'), sombra = $('[data-sombra]');
+  if (!botao || !corpo) return null;
+  const VEL = 32;                       // graus por segundo no giro livre
+  let ang = -24, vel = 0, modo = reduzido ? 'parado' : 'gira', alvo = 0, verso = false;
+  let tx = 0, ty = 0, ix = 0, iy = 0, t0 = performance.now(), raf = 0, visivel = false;
+  const perto = (a, base) => base + Math.round((a - base) / 360) * 360;   // a volta inteira mais próxima
+  const desenha = agora => {
+    const dt = Math.min(0.05, (agora - t0) / 1000); t0 = agora;
+    if (modo === 'gira') { vel += (VEL - vel) * Math.min(1, dt * 2.2); ang += vel * dt; }
+    else if (modo === 'mola') {       // rigidez 60, amortecimento 9: assenta em ~0,8 s com um leve balanço
+      const f = (alvo - ang) * 60 - vel * 9; vel += f * dt; ang += vel * dt;
+      if (Math.abs(alvo - ang) < 0.05 && Math.abs(vel) < 0.5) { ang = alvo; vel = 0; modo = 'parado'; }
+    }
+    ix += (tx - ix) * Math.min(1, dt * 8); iy += (ty - iy) * Math.min(1, dt * 8);
+    const boia = reduzido ? 0 : Math.sin(agora / 900) * 6;
+    corpo.style.transform = `translateY(${boia.toFixed(2)}px) rotateX(${(8 + iy).toFixed(2)}deg) rotateY(${(ang + ix).toFixed(2)}deg)`;
+    const vis = ((ang % 360) + 360) % 360;
+    corpo.style.setProperty('--luz', `${(50 + Math.sin(vis * Math.PI / 180) * 60).toFixed(1)}%`);
+    if (sombra) sombra.style.setProperty('--sombra', (0.55 + 0.45 * Math.abs(Math.cos(vis * Math.PI / 180))).toFixed(3));
+    const segue = visivel && !reduzido;
+    raf = segue ? requestAnimationFrame(desenha) : 0;
+  };
+  const liga = () => { if (!raf) { t0 = performance.now(); raf = requestAnimationFrame(desenha); } };
+  new IntersectionObserver(([e]) => { visivel = e.isIntersecting; if (visivel) liga(); }).observe(botao);
+  const assenta = lado => {
+    verso = lado; alvo = perto(ang, lado ? 180 : 0);
+    botao.setAttribute('aria-pressed', String(lado));
+    if (reduzido) { ang = alvo; modo = 'parado'; desenha(performance.now()); return; }
+    modo = 'mola'; liga();
+  };
+  botao.addEventListener('click', () => assenta(modo === 'gira' ? true : !verso));
+  if (mouse && !reduzido) {
+    botao.parentElement.addEventListener('pointermove', e => {
+      const r = botao.getBoundingClientRect();
+      tx = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / r.width)) * 18;
+      ty = -Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / r.height)) * 14;
+      liga();
+    });
+    botao.parentElement.addEventListener('pointerleave', () => { tx = 0; ty = 0; liga(); });
   }
-  const { products, ready } = await import('./objects/product-render/auto.js');
-  await ready;
-  ctrl = products.get(balanca);
-  if (!ctrl) return;
-  const traduz = () => $$('button[aria-label]', balanca).forEach(b => {
-    const t = b.getAttribute('aria-label');
-    const n = /^Pause\b/.test(t) ? 'Pausar a animação da balança' : /^(Play|Resume)\b/.test(t) ? 'Retomar a animação da balança' : t;
-    if (n !== t) b.setAttribute('aria-label', n);
-  });
-  traduz();
-  new MutationObserver(traduz).observe(balanca, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-label'] });
-  balancaNoPasso(ativo);
-}
-montaBalanca();
+  if (reduzido) { ang = 0; desenha(performance.now()); }
+  return {
+    noPasso(n) {
+      if (n === 3) assenta(false);                                         // a orientação chegou: de frente
+      else if (!reduzido && modo !== 'gira' && !verso) { modo = 'gira'; liga(); }
+    },
+  };
+})();
 
 /* ================================================================ barra de WhatsApp no celular */
 const barra = $('[data-barra]');
