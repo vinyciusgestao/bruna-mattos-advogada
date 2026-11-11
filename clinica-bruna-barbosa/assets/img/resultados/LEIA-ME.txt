@@ -1,2 +1,0 @@
-Coloque aqui as fotos de antes e depois (JPG ou WebP, retrato 4:5, ~1000 px de altura).
-Depois cadastre em assets/js/config.js, na lista RESULTADOS.
