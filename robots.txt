@@ -3,3 +3,5 @@ Allow: /
 Disallow: /bruna-mattos-advogada/obrigado.html
 
 Sitemap: https://vinyciusgestao.github.io/bruna-mattos-advogada/sitemap.xml
+
+Sitemap: https://vinyciusgestao.github.io/bruna-mattos-advogada/clinica-bruna-barbosa/sitemap.xml

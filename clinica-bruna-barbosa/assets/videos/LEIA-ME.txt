@@ -1,0 +1,2 @@
+Coloque aqui os vídeos de relatos (MP4, H.264, vertical 9:16, até ~15 MB cada) e as capas (JPG).
+Depois cadastre cada um em assets/js/config.js, na lista RELATOS, com tipo: 'arquivo'.

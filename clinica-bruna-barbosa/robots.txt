@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /bruna-mattos-advogada/clinica-bruna-barbosa/obrigado.html
+Disallow: /bruna-mattos-advogada/clinica-bruna-barbosa/_ferramentas/
+
+Sitemap: https://vinyciusgestao.github.io/bruna-mattos-advogada/clinica-bruna-barbosa/sitemap.xml
